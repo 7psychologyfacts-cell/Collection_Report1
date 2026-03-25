@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reconciliation Processor</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0f11;
+      --surface: #16181c;
+      --border: #2a2d34;
+      --accent: #c8f060;
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --radius: 14px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 44px 40px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+
+    .logo svg { width: 22px; height: 22px; }
+
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 26px;
+      font-weight: 400;
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 13.5px;
+      color: var(--muted);
+      margin-bottom: 36px;
+      font-weight: 300;
+    }
+
+    .field {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .drop-zone {
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 22px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.active {
+      border-color: var(--accent);
+      background: rgba(200, 240, 96, 0.04);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon {
+      width: 36px;
+      height: 36px;
+      background: #1e2128;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .drop-icon svg { width: 18px; height: 18px; color: var(--muted); }
+
+    .drop-text strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .drop-text span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .file-name {
+      font-size: 12px;
+      color: var(--accent);
+      margin-top: 6px;
+      padding-left: 4px;
+      min-height: 16px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 28px 0;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      color: #0e0f11;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:hover { opacity: 0.88; }
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,0,0,0.3);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    .btn.loading .spinner { display: block; }
+    .btn.loading .btn-label { opacity: 0.6; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 13px;
+      margin-top: 16px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#0e0f11" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="8" y1="13" x2="16" y2="13"/>
+        <line x1="8" y1="17" x2="16" y2="17"/>
+      </svg>
+    </div>
+
+    <h1>Reconciliation<br/>Processor</h1>
+    <p class="subtitle">Upload your files below to generate the final output.</p>
+
+    <form id="uploadForm" action="/process" method="POST" enctype="multipart/form-data">
+
+      <div class="field">
+        <label>Main File</label>
+        <div class="drop-zone" id="zone1">
+          <input type="file" name="main_file" id="main_file" accept=".html,.xls,.xlsx" required/>
+          <div class="drop-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+              <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+            </svg>
+          </div>
+          <div class="drop-text">
+            <strong>Choose or drop file</strong>
+            <span>.html, .xls, .xlsx</span>
+          </div>
+        </div>
+        <div class="file-name" id="name1"></div>
+      </div>
+
+      <div class="field">
+        <label>Lookup File</label>
+        <div class="drop-zone" id="zone2">
+          <input type="file" name="lookup_file" id="lookup_file" accept=".xlsx" required/>
+          <div class="drop-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+              <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+            </svg>
+          </div>
+          <div class="drop-text">
+            <strong>Choose or drop file</strong>
+            <span>.xlsx only</span>
+          </div>
+        </div>
+        <div class="file-name" id="name2"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <button type="submit" class="btn" id="submitBtn">
+        <div class="spinner"></div>
+        <span class="btn-label">Process & Download</span>
+      </button>
+    </form>
+
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <script>
+    function bindDrop(zoneId, inputId, nameId) {
+      const zone = document.getElementById(zoneId);
+      const input = document.getElementById(inputId);
+      const nameEl = document.getElementById(nameId);
+
+      input.addEventListener("change", () => {
+        nameEl.textContent = input.files[0]?.name || "";
+      });
+
+      zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("active"); });
+      zone.addEventListener("dragleave", () => zone.classList.remove("active"));
+      zone.addEventListener("drop", e => {
+        e.preventDefault();
+        zone.classList.remove("active");
+        if (e.dataTransfer.files.length) {
+          input.files = e.dataTransfer.files;
+          nameEl.textContent = e.dataTransfer.files[0].name;
+        }
+      });
+    }
+
+    bindDrop("zone1", "main_file", "name1");
+    bindDrop("zone2", "lookup_file", "name2");
+
+    document.getElementById("uploadForm").addEventListener("submit", async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById("submitBtn");
+      const errEl = document.getElementById("errorMsg");
+      errEl.style.display = "none";
+      btn.classList.add("loading");
+      btn.disabled = true;
+
+      const formData = new FormData(this);
+      try {
+        const res = await fetch("/process", { method: "POST", body: formData });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || "Something went wrong.");
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = "Final_Output.xlsx"; a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.style.display = "block";
+      } finally {
+        btn.classList.remove("loading");
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
